@@ -1,5 +1,5 @@
 <?php
-// This file is part of the Teams Meeting Attendance plugin for Moodle - http://moodle.org/
+// This file is part of the Zoom Meeting Attendance plugin for Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,24 +15,23 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 require_once($CFG->libdir . '/filelib.php');
-require_once(__DIR__ . '/graph_api.php');
 require_once($CFG->libdir . '/completionlib.php');
 
 /**
- * Teams Meeting Attendance Module
+ * Zoom Meeting Attendance Module
  *
- * This module tracks attendance for Microsoft Teams meetings.
+ * This module tracks attendance for Zoom meetings.
  *
  * Database Structure:
- * - zoomattendance: Stores Teams meeting configuration (one record per meeting)
+ * - zoomattendance: Stores Zoom meeting configuration (one record per meeting)
  * - id, course, name, intro, meetingurl, organizer_email, expected_duration, required_attendance, status
  *
  * - zoomattendance_data: Stores individual user attendance (multiple records per session)
  * - id, sessionid (FK to zoomattendance), userid, attendance_duration, actual_attendance, completion_met
  *
  * Workflow:
- * 1. Create Teams meeting activity -> Creates record in zoomattendance
- * 2. Fetch attendance from Teams -> Creates/updates records in zoomattendance_data
+ * 1. Create Zoom meeting activity -> Creates record in zoomattendance
+ * 2. Fetch attendance from Zoom -> Creates/updates records in zoomattendance_data
  * 3. View attendance -> Reads from zoomattendance_data
  * 4. Check completion -> Reads from zoomattendance_data
  */
@@ -168,7 +167,7 @@ function mod_zoomattendance_extend_settings_navigation($settingsnav, $context)
 }
 
 /**
- * Adds a new instance of the Teams Meeting Attendance module.
+ * Adds a new instance of the Zoom Meeting Attendance module.
  *
  * @param stdClass $data The data submitted from the form.
  * @param mod_zoomattendance_mod_form $mform The form instance.
@@ -217,7 +216,7 @@ function zoomattendance_add_instance($data, $mform)
 }
 
 /**
- * Updates an existing instance of the Teams Meeting Attendance module.
+ * Updates an existing instance of the Zoom Meeting Attendance module.
  *
  * @param stdClass $data The data submitted from the form.
  * @param mod_zoomattendance_mod_form $mform The form instance.
@@ -292,7 +291,7 @@ function zoomattendance_delete_instance($id)
 }
 
 /**
- * Fetch attendance data for a Teams meeting session
+ * Fetch attendance data for a Zoom meeting session
  *
  * @param int $cmid Course module ID
  * @return bool True if successful, false otherwise
@@ -509,7 +508,7 @@ function zoomattendance_fetch_attendance($cmid)
     } catch (Exception $e) {
         // Log the error without exposing sensitive information
         error_log('Zoom Attendance fetch error: ' . $e->getMessage());
-        throw new moodle_exception('attendancefetchfailed', 'mod_zoomattendance', '', 'Failed to fetch attendance data from Teams API');
+        throw new moodle_exception('attendancefetchfailed', 'mod_zoomattendance', '', 'Failed to fetch attendance data from Zoom API');
     }
 }
 

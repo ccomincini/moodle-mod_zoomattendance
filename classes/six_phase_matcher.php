@@ -16,7 +16,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once($CFG->dirroot . '/mod/zoomattendance/classes/teams_id_matcher.php');
+require_once($CFG->dirroot . '/mod/zoomattendance/classes/zoom_id_matcher.php');
 require_once($CFG->dirroot . '/mod/zoomattendance/classes/accent_handler.php');
 require_once($CFG->dirroot . '/mod/zoomattendance/classes/email_pattern_matcher.php');
 require_once($CFG->dirroot . '/mod/zoomattendance/classes/name_parser.php');
@@ -46,7 +46,7 @@ class six_phase_matcher {
     
     public function __construct($users) {
         $this->users = $users;
-        $this->teams_matcher = new teams_id_matcher($users);
+        $this->teams_matcher = new zoom_id_matcher($users);
         $this->email_matcher = new email_pattern_matcher($users);
         $this->name_parser = new name_parser();
         $this->ambiguity_cache = array();
