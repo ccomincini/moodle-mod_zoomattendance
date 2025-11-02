@@ -99,17 +99,18 @@ class performance_data_handler {
      * @return array All unassigned records
      */
     public function get_all_unassigned_records() {
-        global $DB, $CFG;
+        global $DB;
 
-        $sql = "SELECT tad.*, u.firstname, u.lastname, u.email
+        $sql = "SELECT tad.*
                 FROM {zoomattendance_data} tad
-                LEFT JOIN {user} u ON u.id = tad.userid
-                WHERE tad.sessionid = ? AND (tad.userid IS NULL OR tad.userid = ?)
-                ORDER BY LOWER(u.lastname), LOWER(u.firstname)";
-        
-        $params = array($this->zoomattendance->id, $CFG->siteguest);
+                WHERE tad.sessionid = ? 
+                AND (tad.userid IS NULL OR tad.userid = 0)
+                ORDER BY tad.id";
+
+        $params = array($this->zoomattendance->id);
         return $DB->get_records_sql($sql, $params);
     }
+
 
     /**
      * Get unassigned records with pagination and filtering
@@ -137,11 +138,14 @@ class performance_data_handler {
         global $DB, $CFG;
         
         // Get all unassigned records
-        $sql = "SELECT tad.*, u.firstname, u.lastname, u.email
+        $sql = "SELECT tad.*
                 FROM {zoomattendance_data} tad
-                LEFT JOIN {user} u ON u.id = tad.userid
-                WHERE tad.sessionid = ? AND (tad.userid IS NULL OR tad.userid = ?)
-                ORDER BY LOWER(u.lastname), LOWER(u.firstname)";
+                WHERE tad.sessionid = ? 
+                AND (tad.userid IS NULL OR tad.userid = 0)
+                ORDER BY tad.id";
+
+        $params = array($this->zoomattendance->id);
+
         
         $params = array($this->zoomattendance->id, $CFG->siteguest);
         $all_records = $DB->get_records_sql($sql, $params);
@@ -180,11 +184,14 @@ class performance_data_handler {
         $page = max(0, $page);
         
         // Get all unassigned records with alphabetical ordering
-        $sql = "SELECT tad.*, u.firstname, u.lastname, u.email
+        $sql = "SELECT tad.*
                 FROM {zoomattendance_data} tad
-                LEFT JOIN {user} u ON u.id = tad.userid
-                WHERE tad.sessionid = ? AND (tad.userid IS NULL OR tad.userid = ?)
-                ORDER BY LOWER(u.lastname), LOWER(u.firstname)"; // Alphabetical ascending order
+                WHERE tad.sessionid = ? 
+                AND (tad.userid IS NULL OR tad.userid = 0)
+                ORDER BY tad.id";
+
+        $params = array($this->zoomattendance->id);
+
         
         $params = array($this->zoomattendance->id, $CFG->siteguest);
         $all_records = $DB->get_records_sql($sql, $params);

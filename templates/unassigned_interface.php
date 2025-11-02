@@ -214,7 +214,7 @@ function render_initial_records_table($initial_data) {
     $output .= '<thead>';
     $output .= '<tr>';
     $output .= '<th><input type="checkbox" id="select-all" class="select-all-checkbox"></th>';
-    $output .= '<th>' . get_string('teams_user_id', 'zoomattendance') . '</th>';
+    $output .= '<th>' . get_string('zoom_participant_name', 'zoomattendance') . '</th>';
     $output .= '<th>' . get_string('attendance_duration', 'zoomattendance') . '</th>';
     $output .= '<th>' . get_string('suggested_match', 'zoomattendance') . '</th>';
     $output .= '<th>' . get_string('actions', 'zoomattendance') . '</th>';
@@ -232,7 +232,7 @@ function render_initial_records_table($initial_data) {
         $output .= '<td><input type="checkbox" class="record-checkbox" data-record-id="' . $record['id'] . '" ' . $checkbox_disabled . ' ' . $checkbox_checked . '></td>';
         
         // Teams User ID
-        $output .= '<td>' . htmlspecialchars($record['teams_user_id']) . '</td>';
+        $output .= '<td>' . htmlspecialchars($record['name'] ?? '') . '</td>';
         
         // Duration
         $output .= '<td>' . $record['attendance_duration'] . '</td>';

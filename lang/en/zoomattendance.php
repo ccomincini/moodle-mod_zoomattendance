@@ -86,7 +86,7 @@ $string['attendance_percentage'] = 'Attendance %';
 $string['soglia_raggiunta'] = 'Threshold met';
 $string['assignment_type'] = 'Assignment type';
 $string['teams_user'] = 'Zoom user';
-$string['teams_user_id'] = 'Zoom user ID';
+$string['zoom_participant_name'] = 'Zoom user ID';
 $string['attendance_duration'] = 'Attendance duration';
 $string['suggested_match'] = 'Suggested match';
 $string['assign_user'] = 'Assign user';
@@ -264,3 +264,4 @@ $string['idnumber'] = 'Identification number';
 $string['teams_user'] = 'Zoom user';
 $string['assignment_type'] = 'Assignment type';
 
+$string['zoom_participant_name'] = 'Zoom Participant';

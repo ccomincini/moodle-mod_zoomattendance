@@ -200,7 +200,7 @@ if ($ajax) {
                     
                     $record_data = array(
                         'id' => $record->id,
-                        'teams_user_id' => $record->teams_user_id,
+                        'name' => $record->name,
                         'attendance_duration' => $record->attendance_duration,
                         'has_suggestion' => isset($suggestions[$record->id]),
                         'suggestion' => $suggestion,
@@ -434,7 +434,7 @@ foreach ($initial_data['records'] as $record) {
     
     $record_data = array(
         'id' => $record->id,
-        'teams_user_id' => $record->teams_user_id,
+        'name' => $record->name,
         'attendance_duration' => $record->attendance_duration,
         'has_suggestion' => isset($initial_suggestions[$record->id]),
         'suggestion' => $suggestion,

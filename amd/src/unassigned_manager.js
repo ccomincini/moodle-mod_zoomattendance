@@ -213,7 +213,7 @@ function($, Ajax, Notification, Str) {
             html += '<table class="table table-striped table-hover">';
             html += '<thead class="thead-dark">';
             html += '<tr>';
-            html += '<th>' + (this.strings.teams_user_id || 'ID Utente Teams') + '</th>';
+            html += '<th>' + (this.strings.zoom_participant_name || 'Partecipante Zoom') + '</th>';
             html += '<th>' + (this.strings.attendance_duration || 'Durata Presenza') + '</th>';
             html += '<th><input type="checkbox" id="select-all"></th>';
             html += '<th>' + (this.strings.suggested_match || 'Corrispondenza Suggerita') + '</th>';
@@ -247,7 +247,7 @@ function($, Ajax, Notification, Str) {
             }
 
             var html = '<tr data-record-id="' + record.id + '" class="' + rowClass + '">';
-            html += '<td>' + this.escapeHtml(record.teams_user_id) + '</td>';
+            html += '<td>' + this.escapeHtml(record.name) + '</td>';
             html += '<td>' + this.formatDuration(record.attendance_duration) + '</td>';
 
             html += '<td>';
