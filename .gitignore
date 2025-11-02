@@ -21,9 +21,13 @@ Thumbs.db
 # Node modules
 node_modules/
 
-# Build files
+# Build files (escluso AMD)
 build/
 dist/
+
+# Allow AMD minified builds for production
+!amd/build/
+!amd/build/*.min.js
 
 # Coverage reports
 coverage/
