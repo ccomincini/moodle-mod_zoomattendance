@@ -250,3 +250,34 @@ $string['type_manual'] = 'Manuale';
 $string['type_automatic'] = 'Automatico';
 $string['type_unassigned'] = 'Non assegnato';
 $string['zoom_participant_name'] = 'Partecipante Zoom';
+
+
+$string['fetch_success'] = '{$a} partecipanti caricati';
+$string['loading'] = 'Caricamento...';
+
+$string['participant_name'] = 'Nome Partecipante';
+$string['attendance_duration'] = 'Durata Presenza';
+$string['suggested_match'] = 'Corrispondenza Suggerita';
+$string['actions'] = 'Azioni';
+$string['apply_suggestion'] = 'Applica Suggerimento';
+$string['assign'] = 'Assegna';
+$string['select_user'] = 'Seleziona Utente';
+$string['apply_selected'] = 'Applica Selezionati';
+$string['applying'] = 'Applicando...';
+$string['previous'] = 'Precedente';
+$string['next'] = 'Successivo';
+$string['page'] = 'Pagina';
+$string['of'] = 'di';
+$string['total_records'] = 'Totali Record';
+$string['no_records_found'] = 'Nessun record trovato';
+$string['no_suggestion'] = 'Nessun suggerimento disponibile';
+
+$string['duration_participation'] = 'Durata partecipazione';
+$string['attendance_percentage'] = '% presenza';
+$string['minimum_threshold'] = 'Superamento soglia<br>presenza minima';
+
+$string['filter_table_by_type'] = 'Filtra la tabella in base al tipo di corrispondenza utente';
+
+$string['attendance_register_title'] = '<hr/>Registro presenze per il meeting Zoom <em>\'{$a->meeting_name}\'</em>.
+                                        <br />Durata dell\'evento: <em>da {$a->start_date}, a {$a->end_date} per {$a->duration}</em>.
+                                        <br />Soglia di sufficienza impostata al <em>{$a->threshold}%</em><hr/>';

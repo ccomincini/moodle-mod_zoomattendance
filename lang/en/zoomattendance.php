@@ -265,3 +265,32 @@ $string['teams_user'] = 'Zoom user';
 $string['assignment_type'] = 'Assignment type';
 
 $string['zoom_participant_name'] = 'Zoom Participant';
+
+$string['fetch_success'] = '{$a} participants loaded';
+$string['loading'] = 'Loading...';
+
+
+$string['participant_name'] = 'Participant Name';
+$string['attendance_duration'] = 'Attendance Duration';
+$string['suggested_match'] = 'Suggested Match';
+$string['actions'] = 'Actions';
+$string['apply_suggestion'] = 'Apply Suggestion';
+$string['assign'] = 'Assign';
+$string['select_user'] = 'Select User';
+$string['apply_selected'] = 'Apply Selected';
+$string['applying'] = 'Applying...';
+$string['previous'] = 'Previous';
+$string['next'] = 'Next';
+$string['page'] = 'Page';
+$string['of'] = 'of';
+$string['total_records'] = 'Total Records';
+$string['no_records_found'] = 'No records found';
+$string['no_suggestion'] = 'No suggestion available';
+
+$string['duration_participation'] = 'Duration of participation';
+$string['attendance_percentage'] = '% attendance';
+$string['minimum_threshold'] = 'Exceeding minimum<br>attendance threshold';
+
+$string['filter_table_by_type'] = 'Filter table by user matching type';
+
+$string['attendance_register_title'] = 'Attendance register for Zoom meeting: <em>\'{$a->meeting_name}\'</em>. Meeting Duration: <em>from {$a->start_date}, to {$a->end_date} for {$a->duration}</em>; minimal attendance to get completion: <em>{$a->threshold}%</em>';

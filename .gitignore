@@ -36,3 +36,6 @@ coverage/
 .env
 .env.local
 .env.production
+
+# Other specific files
+zoomattendance_full_dump.txt

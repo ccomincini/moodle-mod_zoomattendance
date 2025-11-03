@@ -227,7 +227,7 @@ function zoomattendance_update_instance($data, $mform)
     global $DB;
 
     // Validate required fields
-    if (empty($data->name) || empty($data->meetingurl) || empty($data->organizer_email)) {
+    if (empty($data->name) || empty($data->meeting_id) || empty($data->organizer_email)) {
         throw new moodle_exception('missingrequiredfield', 'mod_zoomattendance');
     }
 
@@ -414,7 +414,7 @@ function zoomattendance_fetch_attendance($cmid)
                     }
                     $attendance_record->sessionid = $session->id;
                     $attendance_record->teams_user_id = $teams_user_id;
-                    $attendance_record->attendance_duration = 0;
+                    $attendance_record->attendance_duration = $attendance_duration;
                     $attendance_record->actual_attendance = 0;
                     $attendance_record->completion_met = 0;
                     $DB->update_record('zoomattendance_data', $attendance_record);
@@ -430,7 +430,7 @@ function zoomattendance_fetch_attendance($cmid)
                     $attendance_record->sessionid = $session->id;
                     $attendance_record->userid = $userid;
                     $attendance_record->teams_user_id = $teams_user_id;
-                    $attendance_record->attendance_duration = 0;
+                    $attendance_record->attendance_duration = $attendance_duration;
                     $attendance_record->actual_attendance = 0;
                     $attendance_record->completion_met = 0;
                     $attendance_record->id = $DB->insert_record('zoomattendance_data', $attendance_record);
