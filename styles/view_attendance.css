@@ -76,12 +76,12 @@
 }
 
 .mod_zoomattendance .card-unassigned {
-    background-color: #f2d7d5;
-    color: #2c3e50 !important;
+    background-color: #d33328;
+    color: #f8ebea !important;
 }
 
 .mod_zoomattendance .card-unassigned h4 {
-    color: #2c3e50;
+    color: #f8ebea;
 }
 
 /* ========== ACTION CARDS ========== */
@@ -113,7 +113,13 @@
 }
 
 .mod_zoomattendance .card-reset {
-    background-color: #f5eef8;
+    background-color: #cae8f7;
+        color: #00010a !important;
+
+}
+
+.mod_zoomattendance .card-reset h4 {
+    color: #00010a;
 }
 
 /* ========== TABLE STYLES ========== */
@@ -191,4 +197,9 @@
 .mod_zoomattendance .badge-warning {
     background-color: #ffc107;
     color: #212529;
+}
+
+.mod_zoomattendance .badge-unassigned {
+    background-color: #d32f2f;
+    color: #fff;
 }

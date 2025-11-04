@@ -466,6 +466,12 @@ $template_context = (object) array(
     )
 );
 
+// ========================= BOTTONI IN ALTO =========================
+echo '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">';
+echo '<div></div>'; // Spacer sinistro
+echo '<a class="btn btn-secondary" href="' . new moodle_url('/mod/zoomattendance/view.php', ['id' => $cm->id]) . '">' . get_string('back_to_register', 'mod_zoomattendance') . '</a>';
+echo '</div>';
+
 // Renderizza l'interfaccia usando il template
 echo render_unassigned_interface($template_context);
 

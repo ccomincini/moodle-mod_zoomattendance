@@ -67,9 +67,9 @@ $string['completionattendance_help'] = 'If enabled, students must achieve the mi
 $string['completionattendance_desc'] = 'Student must achieve the required attendance percentage';
 
 // View page
-$string['attendance_register'] = 'Attendance register';
-$string['close_register'] = 'Close register';
-$string['reopen_register'] = 'Reopen register';
+$string['attendance_register'] = 'Attendance roster';
+$string['close_register'] = 'Close attendance roster';
+$string['reopen_register'] = 'Reopen attendance roster';
 $string['fetch_attendance'] = 'Fetch attendance data';
 $string['fetch_warning'] = 'This will retrieve the latest attendance data from Microsoft Zoom. The process may take a few moments.';
 $string['last_fetch_time'] = 'Last updated: {$a}';
@@ -243,6 +243,7 @@ $string['meeting_id_required'] = 'Zoom meeting selection is required.';
 $string['total_records'] = 'Total records';
 $string['automatic_assignments'] = 'Automatically assigned';
 $string['manual_assignments'] = 'Manually assigned';
+$string['filter_manual'] = 'Manual assignments';
 $string['unassigned_records'] = 'Unassigned records';
 $string['fetch_zoom_data'] = 'Fetch Zoom data';
 $string['manage_unassigned'] = 'Manage unassigned records';
@@ -251,7 +252,7 @@ $string['export_csv'] = 'Export CSV';
 $string['export_excel'] = 'Export Excel';
 $string['filter_all'] = 'All';
 $string['filter_unassigned'] = 'Unassigned';
-$string['filter_assigned'] = 'Assigned';
+$string['filter_assigned'] = ' Automatically assigned';
 $string['type_manual'] = 'Manual';
 $string['type_automatic'] = 'Automatic';
 $string['type_unassigned'] = 'Unassigned';
@@ -293,4 +294,6 @@ $string['minimum_threshold'] = 'Exceeding minimum<br>attendance threshold';
 
 $string['filter_table_by_type'] = 'Filter table by user matching type';
 
-$string['attendance_register_title'] = 'Attendance register for Zoom meeting: <em>\'{$a->meeting_name}\'</em>. Meeting Duration: <em>from {$a->start_date}, to {$a->end_date} for {$a->duration}</em>; minimal attendance to get completion: <em>{$a->threshold}%</em>';
+$string['attendance_register_title'] = 'Attendance roster for Zoom meeting: <em>\'{$a->meeting_name}\'</em>. Meeting Duration: <em>from {$a->start_date}, to {$a->end_date} for {$a->duration}</em>; minimal attendance to get completion: <em>{$a->threshold}%</em>';
+
+$string['back_to_register'] = 'Back to attendance roster';

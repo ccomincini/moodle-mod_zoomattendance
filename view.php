@@ -109,10 +109,12 @@ echo '<div class="filters-export-container" style="display: flex; justify-conten
 echo '<div class="filters-section">';
 echo '<p style="font-size: 0.95em; color: #666; margin-bottom: 10px;">' . get_string('filter_table_by_type', 'mod_zoomattendance') . '</p>';
 echo '<div class="filters mb-3">';
-echo '<a class="btn btn-light" href="?id='.$cm->id.'&filter=all&sort='.$sort_by.'&dir='.$sort_dir.'">' . get_string('filter_all', 'mod_zoomattendance') . '</a> ';
-echo '<a class="btn btn-warning" href="?id='.$cm->id.'&filter=unassigned&sort='.$sort_by.'&dir='.$sort_dir.'">' . get_string('filter_unassigned', 'mod_zoomattendance') . '</a> ';
-echo '<a class="btn btn-success" href="?id='.$cm->id.'&filter=assigned&sort='.$sort_by.'&dir='.$sort_dir.'">' . get_string('filter_assigned', 'mod_zoomattendance') . '</a>';
+echo '<a class="btn ' . ($filter === 'all' ? 'btn-primary' : 'btn-primary') . '" href="?id='.$cm->id.'&filter=all&sort='.$sort_by.'&dir='.$sort_dir.'">' . get_string('filter_all', 'mod_zoomattendance') . '</a> ';
+echo '<a class="btn ' . ($filter === 'unassigned' ? 'btn-danger' : 'btn-danger') . '" href="?id='.$cm->id.'&filter=unassigned&sort='.$sort_by.'&dir='.$sort_dir.'">' . get_string('filter_unassigned', 'mod_zoomattendance') . '</a> ';
+echo '<a class="btn ' . ($filter === 'manual' ? 'btn-warning' : 'btn-warning') . '" href="?id='.$cm->id.'&filter=manual&sort='.$sort_by.'&dir='.$sort_dir.'">' . get_string('filter_manual', 'mod_zoomattendance') . '</a> ';
+echo '<a class="btn ' . ($filter === 'assigned' ? 'btn-success' : 'btn-success') . '" href="?id='.$cm->id.'&filter=assigned&sort='.$sort_by.'&dir='.$sort_dir.'">' . get_string('filter_assigned', 'mod_zoomattendance') . '</a>';
 echo '</div></div>';
+
 
 // EXPORT (DESTRA)
 echo '<div class="export-section" style="flex-shrink: 0;">';
@@ -126,14 +128,18 @@ switch ($filter) {
     case 'unassigned':
         $records = $DB->get_records_select('zoomattendance_data', 'sessionid = ? AND userid = 0', [$session->id]);
         break;
+    case 'manual':
+        $records = $DB->get_records_select('zoomattendance_data', 'sessionid = ? AND userid > 0 AND manually_assigned = 1', [$session->id]);
+        break;
     case 'assigned':
-        $records = $DB->get_records_select('zoomattendance_data', 'sessionid = ? AND userid > 0', [$session->id]);
+        $records = $DB->get_records_select('zoomattendance_data', 'sessionid = ? AND userid > 0 AND manually_assigned = 0', [$session->id]);
         break;
     case 'all':
     default:
         $records = $DB->get_records('zoomattendance_data', ['sessionid' => $session->id]);
         break;
 }
+
 
 // ========== ORDINA RECORDS ==========
 $records_array = array_values($records);
@@ -217,7 +223,7 @@ foreach ($records_array as $record) {
     
     $badge = $record->manually_assigned == 1 ?
         '<span class="badge badge-warning">' . get_string('manual', 'mod_zoomattendance') . '</span>' :
-        ($record->userid ? '<span class="badge badge-success">' . get_string('automatic', 'mod_zoomattendance') . '</span>' : '<span class="badge badge-warning">' . get_string('type_unassigned', 'mod_zoomattendance') . '</span>');
+        ($record->userid ? '<span class="badge badge-success">' . get_string('automatic', 'mod_zoomattendance') . '</span>' : '<span class="badge badge-unassigned">' . get_string('type_unassigned', 'mod_zoomattendance') . '</span>');
 
     $percentage = $expected_duration > 0 ? round(($record->attendance_duration / $expected_duration) * 100) : 0;
     $is_sufficient = $percentage >= $threshold;

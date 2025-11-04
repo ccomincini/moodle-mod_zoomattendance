@@ -236,7 +236,10 @@ $string['privacy:metadata:zoomattendance_data:completion_met'] = 'Se i criteri d
 
 $string['total_records'] = 'Record totali';
 $string['automatic_assignments'] = 'Assegnati automatici';
-$string['manual_assignments'] = 'Assegnati manuali';
+$string['manual_assignments'] = 'Assegnati manualmente';
+$string['filter_manual'] = 'Manual assignments';
+$string['filter_manual'] = 'Assegnati manualmente';
+
 $string['unassigned_records'] = 'Non assegnati';
 $string['fetch_zoom_data'] = 'Recupera dati Zoom';
 $string['manage_unassigned'] = 'Gestisci non assegnati';
@@ -245,7 +248,7 @@ $string['export_csv'] = 'Esporta in CSV';
 $string['export_excel'] = 'Esporta in Excel';
 $string['filter_all'] = 'Tutti';
 $string['filter_unassigned'] = 'Non assegnati';
-$string['filter_assigned'] = 'Assegnati';
+$string['filter_assigned'] = 'Assegnati automaticamente';
 $string['type_manual'] = 'Manuale';
 $string['type_automatic'] = 'Automatico';
 $string['type_unassigned'] = 'Non assegnato';
@@ -281,3 +284,5 @@ $string['filter_table_by_type'] = 'Filtra la tabella in base al tipo di corrispo
 $string['attendance_register_title'] = '<hr/>Registro presenze per il meeting Zoom <em>\'{$a->meeting_name}\'</em>.
                                         <br />Durata dell\'evento: <em>da {$a->start_date}, a {$a->end_date} per {$a->duration}</em>.
                                         <br />Soglia di sufficienza impostata al <em>{$a->threshold}%</em><hr/>';
+
+$string['back_to_register'] = 'Torna al registro dei partecipanti';                                        
