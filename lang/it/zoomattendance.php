@@ -255,7 +255,7 @@ $string['type_unassigned'] = 'Non assegnato';
 $string['zoom_participant_name'] = 'Partecipante Zoom';
 
 
-$string['fetch_success'] = '{$a} partecipanti caricati';
+$string['fetch_success'] = '{$a} sessioni di partecipazione al meeting sono state scaricate da zoom. Queste verranno confrontate con le impostazioni di registro per la verifica della presenza nel range di date impostato.';
 $string['loading'] = 'Caricamento...';
 
 $string['participant_name'] = 'Nome Partecipante';
@@ -286,3 +286,13 @@ $string['attendance_register_title'] = '<hr/>Registro presenze per il meeting Zo
                                         <br />Soglia di sufficienza impostata al <em>{$a->threshold}%</em><hr/>';
 
 $string['back_to_register'] = 'Torna al registro dei partecipanti';                                        
+$string['total_unique_users'] = 'Utenti unici totali';
+
+
+$string['reset_assignments'] = 'Ripristina assegnazioni';
+$string['reset_confirm'] = 'Sei sicuro di voler ripristinare tutte le assegnazioni manuali?';
+$string['reset_success'] = 'Tutte le assegnazioni manuali sono state ripristinate.';
+
+$string['fetch_success_message'] = 'Dati Zoom importati con successo!';
+$string['fetch_error_message'] = 'Errore durante l\'importazione';
+$string['fetch_network_error'] = 'Errore di rete';

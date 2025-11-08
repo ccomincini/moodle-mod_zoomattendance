@@ -214,23 +214,104 @@ if ($ajax) {
                 
             case 'assign_user':
                 if ($recordid && $userid && confirm_sesskey()) {
-                    // Usa il gestore di assegnazioni originale per le assegnazioni singole
-                    require_once($CFG->dirroot . '/mod/zoomattendance/classes/user_assignment_handler.php');
-                    $assignment_handler = new user_assignment_handler($cm, $zoomattendance, $course);
-                    $result = $assignment_handler->assign_single_user($recordid, $userid);
+                    global $DB;
                     
-                    if ($result['success']) {
-                        // Pulisce la cache dopo l'assegnazione
-                        $performance_handler->clear_cache();
-                        echo json_encode(array('success' => true, 'message' => 'Utente assegnato con successo'));
+                    // Recupera il record non assegnato
+                    $unassigned = $DB->get_record('zoomattendance_data', [
+                        'id' => $recordid,
+                        'sessionid' => $zoomattendance->id,
+                        'userid' => 0
+                    ], '*', MUST_EXIST);
+                    
+                    // STEP 1: Elimina il record non assegnato
+                    $DB->delete_record('zoomattendance_data', ['id' => $recordid]);
+                    
+                    // STEP 2: Recupera o crea il record per l'utente assegnato
+                    $existing = $DB->get_records('zoomattendance_data', [
+                        'userid' => $userid,
+                        'sessionid' => $zoomattendance->id
+                    ]);
+                    
+                    if (empty($existing)) {
+                        // Crea nuovo record assegnato
+                        $new_rec = new stdClass();
+                        $new_rec->sessionid = $zoomattendance->id;
+                        $new_rec->userid = $userid;
+                        $new_rec->name = $unassigned->name;
+                        $new_rec->join_time = $unassigned->join_time;
+                        $new_rec->leave_time = $unassigned->leave_time;
+                        $new_rec->attendance_duration = $unassigned->attendance_duration;
+                        $new_rec->actual_attendance = 0;
+                        $new_rec->completion_met = 0;
+                        $new_rec->timecreated = time();
+                        $new_rec->manually_assigned = 1;
+                        
+                        $DB->insert_record('zoomattendance_data', $new_rec);
+                        $merged = false;
                     } else {
-                        echo json_encode(array('success' => false, 'error' => $result['error']));
+                        // STEP 3: Consolida i record duplicati dello stesso utente
+                        $merger = new \mod_zoomattendance\interval_merger();
+                        $all_intervals = [];
+                        $keep_id = null;
+                        
+                        foreach ($existing as $rec) {
+                            if ($keep_id === null) $keep_id = $rec->id;
+                            
+                            if ($rec->join_time > 0 && $rec->leave_time > 0) {
+                                $all_intervals[] = [
+                                    'join_time' => (int)$rec->join_time,
+                                    'leave_time' => (int)$rec->leave_time
+                                ];
+                            }
+                        }
+                        
+                        // Aggiungi l'intervallo del nuovo record
+                        if ($unassigned->join_time > 0 && $unassigned->leave_time > 0) {
+                            $all_intervals[] = [
+                                'join_time' => (int)$unassigned->join_time,
+                                'leave_time' => (int)$unassigned->leave_time
+                            ];
+                        } else {
+                            $all_intervals[] = [
+                                'join_time' => $zoomattendance->start_datetime,
+                                'leave_time' => $zoomattendance->start_datetime + $unassigned->attendance_duration
+                            ];
+                        }
+                        
+                        // Calcola durata consolidata senza sovrapposizioni
+                        $merged_duration = $merger->total_for_range(
+                            $all_intervals,
+                            $zoomattendance->start_datetime,
+                            $zoomattendance->end_datetime
+                        );
+                        
+                        // Aggiorna il record da mantenere
+                        $update = new stdClass();
+                        $update->id = $keep_id;
+                        $update->attendance_duration = $merged_duration;
+                        $update->manually_assigned = 1;
+                        
+                        $DB->update_record('zoomattendance_data', $update);
+                        
+                        // Elimina gli altri record duplicati
+                        foreach ($existing as $rec) {
+                            if ($rec->id !== $keep_id) {
+                                $DB->delete_record('zoomattendance_data', ['id' => $rec->id]);
+                            }
+                        }
+                        
+                        $merged = true;
                     }
-                } else {
-                    echo json_encode(array('success' => false, 'error' => 'Parametri non validi'));
+                    
+                    $performance_handler->clear_cache();
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'Utente assegnato con successo' . ($merged ? ' (consolidato)' : '')
+                    ]);
                 }
                 break;
-                
+
+  
             case 'bulk_assign':
                 if (confirm_sesskey()) {
                     $assignments = optional_param_array('assignments', array(), PARAM_INT);

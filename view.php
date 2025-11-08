@@ -74,6 +74,14 @@ $unassigned_count = $DB->count_records_select('zoomattendance_data', 'sessionid 
 $total_records = $automatic_records + $manual_records + $unassigned_count;
 
 echo '<div class="stats-container">';
+// Aggregazione utenti unici
+// Calcola e mostra il numero di utenti unici (ID Moodle associato, già aggregato da recordsarray)
+$num_utenti_unici = isset($recordsarray) && is_array($recordsarray) ? count($recordsarray) : 0;
+
+echo '<div class="stats-card card-totalunique">
+    <h4>' . get_string('total_unique_users', 'mod_zoomattendance') . '</h4>
+    <div class="metric">' . $num_utenti_unici . '</div>
+</div>';
 echo '<div class="stats-card card-total"><h4>' . get_string('total_records', 'mod_zoomattendance') . '</h4><div class="metric">' . $total_records . '</div></div>';
 echo '<div class="stats-card card-automatic"><h4>' . get_string('automatic_assignments', 'mod_zoomattendance') . '</h4><div class="metric">' . $automatic_records . '</div></div>';
 echo '<div class="stats-card card-manual"><h4>' . get_string('manual_assignments', 'mod_zoomattendance') . '</h4><div class="metric">' . $manual_records . '</div></div>';
@@ -87,8 +95,37 @@ echo '<a class="btn btn-secondary" id="fetch-btn" href="#">' . get_string('fetch
 echo '<div class="action-card card-manage"><h4>' . get_string('manage_unassigned', 'mod_zoomattendance') . '</h4>';
 echo '<a class="btn btn-warning" href="/mod/zoomattendance/manage_unassigned.php?id=' . $cm->id . '">' . get_string('manage_unassigned', 'mod_zoomattendance') . '</a></div>';
 echo '<div class="action-card card-reset"><h4>' . get_string('reset_assignments', 'mod_zoomattendance') . '</h4>';
-echo '<a class="btn btn-primary" href="#">' . get_string('reset_assignments', 'mod_zoomattendance') . '</a></div>';
+$reset_url = new moodle_url('/mod/zoomattendance/reset_assignments.php', ['id' => $cm->id]);
+$reset_confirm = get_string('reset_confirm', 'mod_zoomattendance');
+echo '<a class="btn btn-primary" onclick="if(confirm(\'' . addslashes($reset_confirm) . '\')) window.location.href=\'' . $reset_url . '\'; return false;">' . get_string('reset_assignments', 'mod_zoomattendance') . '</a></div>';
 echo '</div>';
+
+// ========== FETCH BUTTON HANDLER ==========
+?>
+<script>
+document.getElementById('fetch-btn').addEventListener('click', function(e) {
+    e.preventDefault();
+    this.disabled = true;
+    this.textContent = '<?php echo get_string('loading', 'core'); ?>';
+    
+    fetch('<?php echo new moodle_url('/mod/zoomattendance/fetch_attendance.php', ['id' => $cm->id]); ?>')
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                alert('<?php echo addslashes(get_string('fetch_success_message', 'mod_zoomattendance')); ?>');
+                location.reload();
+            } else {
+                alert('<?php echo addslashes(get_string('fetch_error_message', 'mod_zoomattendance')); ?>: ' + (d.error || d.message));
+                this.disabled = false;
+            }
+        })
+        .catch(e => {
+            alert('<?php echo addslashes(get_string('fetch_network_error', 'mod_zoomattendance')); ?>: ' + e);
+            this.disabled = false;
+        });
+});
+</script>
+<?php
 
 // ========== FILTERS & EXPORT ==========
 $filter = optional_param('filter', 'all', PARAM_ALPHA);
@@ -115,7 +152,6 @@ echo '<a class="btn ' . ($filter === 'manual' ? 'btn-warning' : 'btn-warning') .
 echo '<a class="btn ' . ($filter === 'assigned' ? 'btn-success' : 'btn-success') . '" href="?id='.$cm->id.'&filter=assigned&sort='.$sort_by.'&dir='.$sort_dir.'">' . get_string('filter_assigned', 'mod_zoomattendance') . '</a>';
 echo '</div></div>';
 
-
 // EXPORT (DESTRA)
 echo '<div class="export-section" style="flex-shrink: 0;">';
 echo '<div class="export-buttons-container" style="display: flex; gap: 10px;">';
@@ -123,23 +159,65 @@ echo '<a class="btn btn-secondary" href="' . new moodle_url('/mod/zoomattendance
 echo '<a class="btn btn-secondary" href="' . new moodle_url('/mod/zoomattendance/export.php', ['id' => $cm->id, 'format' => 'xlsx']) . '">' . get_string('export_excel', 'mod_zoomattendance') . '</a>';
 echo '</div></div></div>';
 
-// ========== CARICA RECORDS ==========
+// ========== CARICA RECORDS CON AGGREGAZIONE ==========
 switch ($filter) {
     case 'unassigned':
         $records = $DB->get_records_select('zoomattendance_data', 'sessionid = ? AND userid = 0', [$session->id]);
         break;
     case 'manual':
-        $records = $DB->get_records_select('zoomattendance_data', 'sessionid = ? AND userid > 0 AND manually_assigned = 1', [$session->id]);
-        break;
     case 'assigned':
-        $records = $DB->get_records_select('zoomattendance_data', 'sessionid = ? AND userid > 0 AND manually_assigned = 0', [$session->id]);
-        break;
     case 'all':
     default:
-        $records = $DB->get_records('zoomattendance_data', ['sessionid' => $session->id]);
+        $sql = "SELECT 
+                    userid,
+                    MIN(id) as id,
+                    GROUP_CONCAT(DISTINCT name ORDER BY name SEPARATOR ' | ') as name,
+                    SUM(attendance_duration) as attendance_duration,
+                    MIN(join_time) as join_time,
+                    MAX(leave_time) as leave_time,
+                    MAX(manually_assigned) as manually_assigned
+                FROM {zoomattendance_data}
+                WHERE sessionid = ?";
+        
+        if ($filter === 'manual') {
+            $sql .= " AND manually_assigned = 1";
+        } elseif ($filter === 'assigned') {
+            $sql .= " AND userid > 0 AND manually_assigned = 0";
+        }
+        
+        $sql .= " GROUP BY userid";
+        
+        $records = $DB->get_records_sql($sql, [$session->id]);
         break;
 }
 
+// ========== DEDUPLICA OVERLAP MULTI-DEVICE ==========
+$merger = new \mod_zoomattendance\interval_merger();
+
+foreach ($records as $key => $record) {
+    if ($record->userid > 0) {
+        // Ricarica TUTTI gli intervalli raw (join/leave) per questo utente
+        $all_intervals = $DB->get_records('zoomattendance_data', 
+            ['sessionid' => $session->id, 'userid' => $record->userid], 
+            'join_time ASC');
+        
+        // Converti in array di intervalli
+        $intervals = [];
+        foreach ($all_intervals as $interval) {
+            if ($interval->join_time > 0 && $interval->leave_time > 0) {
+                $intervals[] = ['join_time' => $interval->join_time, 'leave_time' => $interval->leave_time];
+            }
+        }
+        
+        // Calcola durata con merge e deduplica (tolgo overlap)
+        if (!empty($intervals)) {
+            $merged_duration = $merger->total_for_range($intervals, $session->start_datetime, $session->end_datetime);
+            // SOVRASCRIVI la durata aggregata con quella deduplica
+            $record->attendance_duration = $merged_duration;
+        }
+    }
+}
+// ========== FINE DEDUPLICA ==========
 
 // ========== ORDINA RECORDS ==========
 $records_array = array_values($records);
@@ -186,8 +264,6 @@ usort($records_array, function($a, $b) use ($sort_by, $sort_dir, $DB, $expected_
         return ($val_a > $val_b) ? -1 : (($val_a < $val_b) ? 1 : 0);
     }
 });
-
-
 
 // ========== TABELLA ==========
 echo '<table class="table table-hover">';
@@ -254,27 +330,6 @@ foreach ($records_array as $record) {
 
 echo '</tbody></table>';
 echo '</div>';
-?>
 
-<script>
-document.getElementById('fetch-btn').addEventListener('click', function(e) {
-    e.preventDefault();
-    this.disabled = true;
-    this.textContent = '<?php echo get_string('loading', 'core'); ?>';
-    
-    fetch('<?php echo new moodle_url('/mod/zoomattendance/fetch_attendance.php', ['id' => $cm->id]); ?>')
-        .then(r => r.json())
-        .then(d => {
-            alert(d.message || d.error);
-            if (d.success) location.reload();
-            else this.disabled = false;
-        })
-        .catch(e => {
-            alert('Error: ' + e);
-            this.disabled = false;
-        });
-});
-</script>
-
-<?php
 echo $OUTPUT->footer();
+?>

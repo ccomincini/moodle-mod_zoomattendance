@@ -1,170 +1,101 @@
 <?php
-// NO require() - accedi a config direttamente
 define('AJAX_SCRIPT', true);
-define('REQUIRE_LOGIN', false);
-
 require('../../config.php');
+require_once($CFG->dirroot.'/mod/zoomattendance/classes/suggestion_engine.php');
 
-// Clean output
-while (ob_get_level()) ob_end_clean();
+// Blinda l'output per sicurezza AJAX
+@ob_end_clean();
+error_reporting(0);
+ini_set('display_errors', 0);
+header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store');
 
-// Set headers FIRST
-header('Content-Type: application/json');
-header('Cache-Control: no-cache, no-store, must-revalidate');
-
-$id = optional_param('id', 0, PARAM_INT);
-
-if (!$id) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Missing id']);
-    exit;
-}
+$id = required_param('id', PARAM_INT);
 
 try {
-    // Carica il modulo senza require_login
     $cm = get_coursemodule_from_id('zoomattendance', $id, 0, false, MUST_EXIST);
-    $course = get_course($cm->course);
     $context = context_module::instance($cm->id);
-    
-    // Verifica manuale accesso
-    if (isguestuser() || !$USER->id) {
-        throw new Exception('Access denied');
-    }
-    
-    require_capability('mod/zoomattendance:addinstance', $context);
-    
-    global $DB;
     $session = $DB->get_record('zoomattendance', ['id' => $cm->instance], '*', MUST_EXIST);
-    
-    // Debug: Log che siamo partiti
-    error_log('FETCH START: Session ID = ' . $session->id);
-    
-    // Istanzia la classe
-    $merger = new \mod_zoomattendance\interval_merger();
-    error_log('MERGER CLASS INSTANTIATED OK');
-        
-    
-    // STEP 1: Recupera TUTTI i record raw dei partecipanti nelle sessioni sovrapposte
-    $sql = "SELECT 
-            COALESCE(LOWER(TRIM(zmp.user_email)), CONCAT('unknown_', LOWER(TRIM(zmp.name)))),
-            zmp.name,
-            zmp.user_email,
-            zmp.join_time,
-            zmp.leave_time
-            FROM {zoom_meeting_participants} zmp
-            JOIN {zoom_meeting_details} zmd ON zmp.detailsid = zmd.id
-            JOIN {zoom} z ON zmd.zoomid = z.id
-            WHERE z.meeting_id = ?
-            AND zmd.start_time < ?
-            AND zmd.end_time > ?
-            AND zmp.leave_time > ?
-            AND zmp.join_time < ?
-            ORDER BY email_key, zmp.join_time";
-    
-    $params = [
-        $session->meeting_id,
-        $session->end_datetime,
-        $session->start_datetime,
-        $session->start_datetime,
-        $session->end_datetime
-    ];
-    
-    $raw_records = $DB->get_records_sql($sql, $params);
-    
-    // STEP 2: Raggruppa per partecipante e applica interval merging
-    $merger = new \mod_zoomattendance\interval_merger();
-    $aggregated = [];
-    $current_user = null;
-    $intervals = [];
-    $user_data = [];
-    
-    foreach ($raw_records as $record) {
-        // Nuovo utente
-        if ($current_user !== $record->email_key) {
-            // Processa gli intervalli precedenti
-            if ($current_user !== null && !empty($intervals)) {
-                error_log('ZOOMLOG | UTENTE: ' . $current_user . ' | INTERVALLI: ' . json_encode($intervals));
-                $total_duration = $merger->total_for_range(
-                    $intervals,
-                    $session->start_datetime,
-                    $session->end_datetime
-                );
-                
-                $aggregated[] = (object)[
-                    'email_key' => $current_user,
-                    'name' => $user_data['name'] ?? 'Unknown',
-                    'user_email' => $user_data['user_email'] ?? null,
-                    'total_duration' => $total_duration
-                ];
-            }
-            
-            // Reset per nuovo utente
-            $current_user = $record->email_key;
-            $user_data = [
-                'name' => $record->name,
-                'user_email' => $record->user_email
-            ];
-            $intervals = [];
-        }
-        
-        // Accumula gli intervalli per questo utente
-        $intervals[] = [
-            'join_time' => $record->join_time,
-            'leave_time' => $record->leave_time
-        ];
+    require_login($cm->course, false, $cm);
+    require_capability('mod/zoomattendance:addinstance', $context);
+
+    $zoom_details = $DB->get_records('zoom_meeting_details', ['meeting_id' => $session->meeting_id]);
+    $all_participants = [];
+    foreach ($zoom_details as $detail) {
+        $participants = $DB->get_records('zoom_meeting_participants', ['detailsid' => $detail->id]);
+        $all_participants = array_merge($all_participants, $participants);
     }
-    
-    // Processa l'ultimo utente
-    if ($current_user !== null && !empty($intervals)) {
-        error_log('ZOOMLOG | UTENTE: ' . $current_user . ' | INTERVALLI: ' . json_encode($intervals));
-        $total_duration = $merger->total_for_range(
-            $intervals,
-            $session->start_datetime,
-            $session->end_datetime
-        );
-        
-        $aggregated[] = (object)[
-            'email_key' => $current_user,
-            'name' => $user_data['name'] ?? 'Unknown',
-            'user_email' => $user_data['user_email'] ?? null,
-            'total_duration' => $total_duration
-        ];
-    }
-    
-    // STEP 3: Salva nel database
+
+    $context_course = context_course::instance($cm->course);
+    $enrolled_users = get_enrolled_users($context_course, '', 0, 'u.id, u.firstname, u.lastname, u.email');
+    $sugg_engine = new suggestion_engine($enrolled_users);
+
+    // Pulisci i record precedenti di questa sessione
     $DB->delete_records('zoomattendance_data', ['sessionid' => $session->id]);
-    
-    $stored = 0;
-    foreach ($aggregated as $p) {
-        $users = $DB->get_records('user', ['email' => $p->user_email], '', 'id', 0, 1);
-        $moodle_user = reset($users) ?: null;
-        
+
+    $imported = 0;
+
+    foreach ($all_participants as $raw) {
+        $zoom_email = strtolower($raw->user_email ?? '');
+        $zoom_name = trim($raw->name);
+        $userid = 0;
+
+        // 1. Match email esatta (blindato)
+        $users = array_filter($enrolled_users, fn($u) => strtolower($u->email) === $zoom_email);
+        if ($zoom_email && count($users) === 1) {
+            $userid = reset($users)->id;
+        } else {
+            // 2. Usa suggestion_engine SOLO se scorings high-confidence
+            $suggestions = $sugg_engine->generate_suggestions([(object)['id'=>0,'name'=>$zoom_name,'user_email'=>$zoom_email]]);
+            if (!empty($suggestions) && is_array($suggestions)) {
+                $first = reset($suggestions);
+                if ($first['confidence'] === 'high') {
+                    $userid = $first['user']->id;
+                }
+            }
+        }
+
+        // Crea record finale
         $rec = new stdClass();
         $rec->sessionid = $session->id;
-        $rec->userid = $moodle_user ? $moodle_user->id : 0;
-        $rec->name = $p->name;
-        $rec->join_time = $session->start_datetime;
-        $rec->leave_time = $session->end_datetime;
-        $rec->attendance_duration = $p->total_duration;
-        $rec->actual_attendance = 0;
-        $rec->completion_met = 0;
+        $rec->userid = $userid;
+        $rec->name = $zoom_name;
+        $rec->user_email = $zoom_email;
+
+        // Converti join/leave a timestamp se necessario
+        $join_ts = !empty($raw->join_time) ? (int)$raw->join_time : 0;
+        $leave_ts = !empty($raw->leave_time) ? (int)$raw->leave_time : 0;
+
+        // Clip join/leave al range del registro
+        $clip_join = max($join_ts, $session->start_datetime);
+        $clip_leave = min($leave_ts, $session->end_datetime);
+
+        // Salva i timestamp originali per audit
+        $rec->join_time = $join_ts;
+        $rec->leave_time = $leave_ts;
+
+
+        // Calcola durata solo se sovrapposto al range
+        if ($clip_leave > $clip_join) {
+            $rec->attendance_duration = $clip_leave - $clip_join;
+        } else {
+            $rec->attendance_duration = 0;
+        }
+        $rec->manually_assigned = 0;
         $rec->timecreated = time();
-        
+
         $DB->insert_record('zoomattendance_data', $rec);
-        $stored++;
+        $imported++;
     }
-    
+
     echo json_encode([
         'success' => true,
-        'message' => get_string('fetch_success', 'zoomattendance', $stored),
-        'count' => $stored
+        'imported' => $imported,
+        'message' => " $imported meeting attendance sessions were downloaded from Zoom. These will be compared to the log settings to verify attendance within the specified date range."
     ]);
-
 } catch (Throwable $e) {
-    header('Content-Type: application/json');
     http_response_code(500);
-    echo json_encode([
-        'success' => false, 
-        'error' => $e->getMessage()
-    ]);
+    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    exit;
 }
+exit;

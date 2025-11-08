@@ -267,7 +267,7 @@ $string['assignment_type'] = 'Assignment type';
 
 $string['zoom_participant_name'] = 'Zoom Participant';
 
-$string['fetch_success'] = '{$a} participants loaded';
+$string['fetch_success'] = '{$a} meeting attendance sessions were downloaded from Zoom. These will be compared to the log settings to verify attendance within the specified date range.';
 $string['loading'] = 'Loading...';
 
 
@@ -297,3 +297,12 @@ $string['filter_table_by_type'] = 'Filter table by user matching type';
 $string['attendance_register_title'] = 'Attendance roster for Zoom meeting: <em>\'{$a->meeting_name}\'</em>. Meeting Duration: <em>from {$a->start_date}, to {$a->end_date} for {$a->duration}</em>; minimal attendance to get completion: <em>{$a->threshold}%</em>';
 
 $string['back_to_register'] = 'Back to attendance roster';
+$string['total_unique_users'] = 'Total unique users';
+
+$string['reset_assignments'] = 'Reset assignments';
+$string['reset_confirm'] = 'Are you sure you want to reset all manual assignments?';
+$string['reset_success'] = 'All manual assignments have been reset.';
+
+$string['fetch_success_message'] = 'Zoom data imported successfully!';
+$string['fetch_error_message'] = 'Error during import';
+$string['fetch_network_error'] = 'Network error';
