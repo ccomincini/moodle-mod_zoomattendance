@@ -46,7 +46,7 @@ try {
     
     // STEP 1: Recupera TUTTI i record raw dei partecipanti nelle sessioni sovrapposte
     $sql = "SELECT 
-            COALESCE(zmp.user_email, CONCAT('unknown_', zmp.name)) as email_key,
+            COALESCE(LOWER(TRIM(zmp.user_email)), CONCAT('unknown_', LOWER(TRIM(zmp.name)))),
             zmp.name,
             zmp.user_email,
             zmp.join_time,
@@ -83,6 +83,7 @@ try {
         if ($current_user !== $record->email_key) {
             // Processa gli intervalli precedenti
             if ($current_user !== null && !empty($intervals)) {
+                error_log('ZOOMLOG | UTENTE: ' . $current_user . ' | INTERVALLI: ' . json_encode($intervals));
                 $total_duration = $merger->total_for_range(
                     $intervals,
                     $session->start_datetime,
@@ -115,6 +116,7 @@ try {
     
     // Processa l'ultimo utente
     if ($current_user !== null && !empty($intervals)) {
+        error_log('ZOOMLOG | UTENTE: ' . $current_user . ' | INTERVALLI: ' . json_encode($intervals));
         $total_duration = $merger->total_for_range(
             $intervals,
             $session->start_datetime,
