@@ -306,3 +306,7 @@ $string['reset_success'] = 'All manual assignments have been reset.';
 $string['fetch_success_message'] = 'Zoom data imported successfully!';
 $string['fetch_error_message'] = 'Error during import';
 $string['fetch_network_error'] = 'Network error';
+
+$string['users_found_in_session'] = 'Users found in thhe roster session';
+$string['zoom_records_unassigned'] = 'Record Zoom unassigned to course users';
+

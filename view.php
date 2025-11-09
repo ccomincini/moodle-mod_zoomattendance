@@ -45,7 +45,6 @@ echo '<div class="mod_zoomattendance">';
 $duration_seconds = $session->end_datetime - $session->start_datetime;
 $threshold = (int)$session->required_attendance;
 
-// Carica il meeting Zoom: mdl_zoomattendance.meeting_id = mdl_zoom.meeting_id
 $meeting_name = 'N/A';
 if ($session->meeting_id) {
     $zoom_meeting = $DB->get_record('zoom', ['meeting_id' => $session->meeting_id], '*', false);
@@ -54,7 +53,6 @@ if ($session->meeting_id) {
     }
 }
 
-// Formatta le date di inizio e fine
 $start_date = userdate($session->start_datetime, get_string('strftimedaydatetime', 'langconfig'));
 $end_date = userdate($session->end_datetime, get_string('strftimedaydatetime', 'langconfig'));
 
@@ -68,24 +66,46 @@ $title_data = (object)[
 echo '<h5>' . get_string('attendance_register_title', 'mod_zoomattendance', $title_data) . '<br></h5>';
 
 // ========== STATS CARDS ==========
-$automatic_records = $DB->count_records_select('zoomattendance_data', 'sessionid = ? AND userid > 0 AND manually_assigned = 0', [$session->id]);
-$manual_records = $DB->count_records_select('zoomattendance_data', 'sessionid = ? AND userid > 0 AND manually_assigned = 1', [$session->id]);
-$unassigned_count = $DB->count_records_select('zoomattendance_data', 'sessionid = ? AND userid = 0', [$session->id]);
-$total_records = $automatic_records + $manual_records + $unassigned_count;
+// 1. Utenti unici trovati nella sessione (identificati nel range)
+$sql_unique_users = "SELECT COUNT(DISTINCT userid) 
+                     FROM {zoomattendance_data} 
+                     WHERE sessionid = ? AND userid > 0 AND attendance_duration > 0";
+$unique_users_in_session = $DB->count_records_sql($sql_unique_users, [$session->id]);
+
+// 2. Utenti assegnati automaticamente (nessuna assegnazione manuale)
+$sql_automatic = "SELECT COUNT(DISTINCT userid) 
+                  FROM {zoomattendance_data} 
+                  WHERE sessionid = ? AND userid > 0 AND attendance_duration > 0
+                  AND userid NOT IN (
+                      SELECT DISTINCT userid 
+                      FROM {zoomattendance_data} 
+                      WHERE sessionid = ? AND manually_assigned = 1 AND attendance_duration > 0
+                  )";
+$automatic_users = $DB->count_records_sql($sql_automatic, [$session->id, $session->id]);
+
+// 3. Utenti assegnati manualmente (almeno una assegnazione manuale)
+$sql_manual = "SELECT COUNT(DISTINCT userid) 
+               FROM {zoomattendance_data} 
+               WHERE sessionid = ? AND userid > 0 AND attendance_duration > 0
+               AND userid IN (
+                   SELECT DISTINCT userid 
+                   FROM {zoomattendance_data} 
+                   WHERE sessionid = ? AND manually_assigned = 1 AND attendance_duration > 0
+               )";
+$manual_users = $DB->count_records_sql($sql_manual, [$session->id, $session->id]);
+
+// 4. Record Zoom non assegnati (conta RECORD non utenti)
+$unassigned_records = $DB->count_records_select('zoomattendance_data', 'sessionid = ? AND userid = 0', [$session->id]);
+
 
 echo '<div class="stats-container">';
-// Aggregazione utenti unici
-// Calcola e mostra il numero di utenti unici (ID Moodle associato, già aggregato da recordsarray)
-$num_utenti_unici = isset($recordsarray) && is_array($recordsarray) ? count($recordsarray) : 0;
-
 echo '<div class="stats-card card-totalunique">
-    <h4>' . get_string('total_unique_users', 'mod_zoomattendance') . '</h4>
-    <div class="metric">' . $num_utenti_unici . '</div>
+    <h4>' . get_string('users_found_in_session', 'mod_zoomattendance') . '</h4>
+    <div class="metric">' . $unique_users_in_session . '</div>
 </div>';
-echo '<div class="stats-card card-total"><h4>' . get_string('total_records', 'mod_zoomattendance') . '</h4><div class="metric">' . $total_records . '</div></div>';
-echo '<div class="stats-card card-automatic"><h4>' . get_string('automatic_assignments', 'mod_zoomattendance') . '</h4><div class="metric">' . $automatic_records . '</div></div>';
-echo '<div class="stats-card card-manual"><h4>' . get_string('manual_assignments', 'mod_zoomattendance') . '</h4><div class="metric">' . $manual_records . '</div></div>';
-echo '<div class="stats-card card-unassigned"><h4>' . get_string('unassigned_records', 'mod_zoomattendance') . '</h4><div class="metric">' . $unassigned_count . '</div></div>';
+echo '<div class="stats-card card-automatic"><h4>' . get_string('automatic_assignments', 'mod_zoomattendance') . '</h4><div class="metric">' . $automatic_users . '</div></div>';
+echo '<div class="stats-card card-manual"><h4>' . get_string('manual_assignments', 'mod_zoomattendance') . '</h4><div class="metric">' . $manual_users . '</div></div>';
+echo '<div class="stats-card card-unassigned"><h4>' . get_string('zoom_records_unassigned', 'mod_zoomattendance') . '</h4><div class="metric">' . $unassigned_records . '</div></div>';
 echo '</div>';
 
 // ========== ACTION BUTTONS ==========
@@ -132,7 +152,6 @@ $filter = optional_param('filter', 'all', PARAM_ALPHA);
 $sort_by = optional_param('sort', 'lastname', PARAM_ALPHA);
 $sort_dir = optional_param('dir', 'asc', PARAM_ALPHA);
 
-// Valida parametri
 if (!in_array($sort_by, ['lastname', 'firstname', 'percentage', 'duration'])) {
     $sort_by = 'lastname';
 }
@@ -147,7 +166,6 @@ echo '<div class="filters-section">';
 echo '<p style="font-size: 0.95em; color: #666; margin-bottom: 10px;">' . get_string('filter_table_by_type', 'mod_zoomattendance') . '</p>';
 echo '<div class="filters mb-3">';
 echo '<a class="btn ' . ($filter === 'all' ? 'btn-primary' : 'btn-primary') . '" href="?id='.$cm->id.'&filter=all&sort='.$sort_by.'&dir='.$sort_dir.'">' . get_string('filter_all', 'mod_zoomattendance') . '</a> ';
-echo '<a class="btn ' . ($filter === 'unassigned' ? 'btn-danger' : 'btn-danger') . '" href="?id='.$cm->id.'&filter=unassigned&sort='.$sort_by.'&dir='.$sort_dir.'">' . get_string('filter_unassigned', 'mod_zoomattendance') . '</a> ';
 echo '<a class="btn ' . ($filter === 'manual' ? 'btn-warning' : 'btn-warning') . '" href="?id='.$cm->id.'&filter=manual&sort='.$sort_by.'&dir='.$sort_dir.'">' . get_string('filter_manual', 'mod_zoomattendance') . '</a> ';
 echo '<a class="btn ' . ($filter === 'assigned' ? 'btn-success' : 'btn-success') . '" href="?id='.$cm->id.'&filter=assigned&sort='.$sort_by.'&dir='.$sort_dir.'">' . get_string('filter_assigned', 'mod_zoomattendance') . '</a>';
 echo '</div></div>';
@@ -159,16 +177,8 @@ echo '<a class="btn btn-secondary" href="' . new moodle_url('/mod/zoomattendance
 echo '<a class="btn btn-secondary" href="' . new moodle_url('/mod/zoomattendance/export.php', ['id' => $cm->id, 'format' => 'xlsx']) . '">' . get_string('export_excel', 'mod_zoomattendance') . '</a>';
 echo '</div></div></div>';
 
-// ========== CARICA RECORDS CON AGGREGAZIONE ==========
-switch ($filter) {
-    case 'unassigned':
-        $records = $DB->get_records_select('zoomattendance_data', 'sessionid = ? AND userid = 0', [$session->id]);
-        break;
-    case 'manual':
-    case 'assigned':
-    case 'all':
-    default:
-        $sql = "SELECT 
+// ========== CARICA SOLO UTENTI IDENTIFICATI (userid > 0) ==========
+$sql_identified = "SELECT 
                     userid,
                     MIN(id) as id,
                     GROUP_CONCAT(DISTINCT name ORDER BY name SEPARATOR ' | ') as name,
@@ -177,56 +187,49 @@ switch ($filter) {
                     MAX(leave_time) as leave_time,
                     MAX(manually_assigned) as manually_assigned
                 FROM {zoomattendance_data}
-                WHERE sessionid = ?";
-        
-        if ($filter === 'manual') {
-            $sql .= " AND manually_assigned = 1";
-        } elseif ($filter === 'assigned') {
-            $sql .= " AND userid > 0 AND manually_assigned = 0";
-        }
-        
-        $sql .= " GROUP BY userid";
-        
-        $records = $DB->get_records_sql($sql, [$session->id]);
-        break;
+                WHERE sessionid = ? AND userid > 0 AND attendance_duration > 0";
+
+if ($filter === 'manual') {
+    $sql_identified .= " AND userid IN (SELECT DISTINCT userid FROM {zoomattendance_data} WHERE sessionid = ? AND manually_assigned = 1)";
+    $params_identified = [$session->id, $session->id];
+} elseif ($filter === 'assigned') {
+    $sql_identified .= " AND userid NOT IN (SELECT DISTINCT userid FROM {zoomattendance_data} WHERE sessionid = ? AND manually_assigned = 1)";
+    $params_identified = [$session->id, $session->id];
+} else {
+    $params_identified = [$session->id];
 }
+
+$sql_identified .= " GROUP BY userid";
+$records = $DB->get_records_sql($sql_identified, $params_identified);
 
 // ========== DEDUPLICA OVERLAP MULTI-DEVICE ==========
 $merger = new \mod_zoomattendance\interval_merger();
 
 foreach ($records as $key => $record) {
-    if ($record->userid > 0) {
-        // Ricarica TUTTI gli intervalli raw (join/leave) per questo utente
-        $all_intervals = $DB->get_records('zoomattendance_data', 
-            ['sessionid' => $session->id, 'userid' => $record->userid], 
-            'join_time ASC');
-        
-        // Converti in array di intervalli
-        $intervals = [];
-        foreach ($all_intervals as $interval) {
-            if ($interval->join_time > 0 && $interval->leave_time > 0) {
-                $intervals[] = ['join_time' => $interval->join_time, 'leave_time' => $interval->leave_time];
-            }
-        }
-        
-        // Calcola durata con merge e deduplica (tolgo overlap)
-        if (!empty($intervals)) {
-            $merged_duration = $merger->total_for_range($intervals, $session->start_datetime, $session->end_datetime);
-            // SOVRASCRIVI la durata aggregata con quella deduplica
-            $record->attendance_duration = $merged_duration;
+    $all_intervals = $DB->get_records('zoomattendance_data', 
+        ['sessionid' => $session->id, 'userid' => $record->userid], 
+        'join_time ASC');
+    
+    $intervals = [];
+    foreach ($all_intervals as $interval) {
+        if ($interval->join_time > 0 && $interval->leave_time > 0) {
+            $intervals[] = ['join_time' => $interval->join_time, 'leave_time' => $interval->leave_time];
         }
     }
+    
+    if (!empty($intervals)) {
+        $merged_duration = $merger->total_for_range($intervals, $session->start_datetime, $session->end_datetime);
+        $record->attendance_duration = $merged_duration;
+    }
 }
-// ========== FINE DEDUPLICA ==========
 
 // ========== ORDINA RECORDS ==========
 $records_array = array_values($records);
-$threshold = (int)$session->required_attendance;
 $expected_duration = $session->end_datetime - $session->start_datetime;
 
 usort($records_array, function($a, $b) use ($sort_by, $sort_dir, $DB, $expected_duration) {
-    $user_a = $a->userid ? $DB->get_record('user', ['id' => $a->userid]) : false;
-    $user_b = $b->userid ? $DB->get_record('user', ['id' => $b->userid]) : false;
+    $user_a = $DB->get_record('user', ['id' => $a->userid]);
+    $user_b = $DB->get_record('user', ['id' => $b->userid]);
     
     $val_a = 0;
     $val_b = 0;
@@ -237,25 +240,12 @@ usort($records_array, function($a, $b) use ($sort_by, $sort_dir, $DB, $expected_
     } elseif ($sort_by === 'firstname') {
         $val_a = $user_a ? $user_a->firstname : '';
         $val_b = $user_b ? $user_b->firstname : '';
-    } elseif ($sort_by === 'idnumber') {
-        $val_a = $user_a ? $user_a->idnumber : '';
-        $val_b = $user_b ? $user_b->idnumber : '';
-    } elseif ($sort_by === 'teams_user') {
-        $val_a = $a->name;
-        $val_b = $b->name;
-    } elseif ($sort_by === 'assignment') {
-        $val_a = $a->manually_assigned ? 1 : ($a->userid ? 0 : 2);
-        $val_b = $b->manually_assigned ? 1 : ($b->userid ? 0 : 2);
     } elseif ($sort_by === 'percentage') {
         $val_a = $expected_duration > 0 ? round(($a->attendance_duration / $expected_duration) * 100) : 0;
         $val_b = $expected_duration > 0 ? round(($b->attendance_duration / $expected_duration) * 100) : 0;
     } elseif ($sort_by === 'duration') {
         $val_a = $a->attendance_duration;
         $val_b = $b->attendance_duration;
-    } elseif ($sort_by === 'sufficient') {
-        $threshold = (int)$a->sessionid; // Placeholder, usa sempre threshold globale
-        $val_a = $expected_duration > 0 ? round(($a->attendance_duration / $expected_duration) * 100) : 0;
-        $val_b = $expected_duration > 0 ? round(($b->attendance_duration / $expected_duration) * 100) : 0;
     }
     
     if ($sort_dir === 'asc') {
@@ -265,14 +255,12 @@ usort($records_array, function($a, $b) use ($sort_by, $sort_dir, $DB, $expected_
     }
 });
 
-// ========== TABELLA ==========
+// ========== TABELLA (SOLO UTENTI IDENTIFICATI) ==========
 echo '<table class="table table-hover">';
 echo '<thead><tr style="vertical-align: top;">';
 
-// Funzione per colonne ORDINABILI
 $make_sort_link = function($col, $label) use ($cm, $sort_by, $sort_dir, $filter) {
     $new_dir = ($sort_by === $col && $sort_dir === 'asc') ? 'desc' : 'asc';
-    // Icone: ▼▲ (sovrapposti) / ▲ (ascendente) / ▼ (discendente)
     $icon = ($sort_by === $col) ? ($sort_dir === 'asc' ? ' ▲' : ' ▼') : ' ▼<span style="margin-left: -5px; display: inline-block;">▲</span>';
     $url = new moodle_url('view.php', ['id' => $cm->id, 'filter' => $filter, 'sort' => $col, 'dir' => $new_dir]);
     return '<a href="' . $url . '" style="text-decoration: none; color: inherit; cursor: pointer;">' . $label . $icon . '</a>';
@@ -288,28 +276,26 @@ echo '<th style="vertical-align: top;">' . $make_sort_link('percentage', get_str
 echo '<th style="vertical-align: top;">' . get_string('minimum_threshold', 'mod_zoomattendance') . '</th>';
 echo '</tr></thead><tbody>';
 
-// ========== LOOP DATI ==========
+// ========== LOOP DATI (SOLO UTENTI IDENTIFICATI) ==========
 foreach ($records_array as $record) {
-    $user = $record->userid ? $DB->get_record('user', ['id' => $record->userid]) : false;
+    $user = $DB->get_record('user', ['id' => $record->userid]);
     $lastname = $user ? $user->lastname : '';
     $firstname = $user ? $user->firstname : '';
     $idnumber = $user ? $user->idnumber : '';
     
-    $row_class = $record->manually_assigned == 1 ? 'manual-assignment' : ($record->userid ? 'automatic-assignment' : 'unassigned-row');
-    
+    $row_class = $record->manually_assigned == 1 ? 'manual-assignment' : 'automatic-assignment';
     $badge = $record->manually_assigned == 1 ?
         '<span class="badge badge-warning">' . get_string('manual', 'mod_zoomattendance') . '</span>' :
-        ($record->userid ? '<span class="badge badge-success">' . get_string('automatic', 'mod_zoomattendance') . '</span>' : '<span class="badge badge-unassigned">' . get_string('type_unassigned', 'mod_zoomattendance') . '</span>');
+        '<span class="badge badge-success">' . get_string('automatic', 'mod_zoomattendance') . '</span>';
 
     $percentage = $expected_duration > 0 ? round(($record->attendance_duration / $expected_duration) * 100) : 0;
     $is_sufficient = $percentage >= $threshold;
     
-    if ($is_sufficient && $record->userid) {
+    if ($is_sufficient) {
         $row_class = 'sufficient-attendance';
     }
     
     $percentage_class = $is_sufficient ? 'percentage-sufficient' : 'percentage-insufficient';
-    
     $suffix_icon = $is_sufficient ? 
         '<i class="fa fa-check-circle" style="color: #0d3818; font-size: 1.2em;"></i>' :
         '<i class="fa fa-times-circle" style="color: #d32f2f; font-size: 1.2em;"></i>';

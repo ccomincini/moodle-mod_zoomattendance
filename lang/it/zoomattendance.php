@@ -296,3 +296,7 @@ $string['reset_success'] = 'Tutte le assegnazioni manuali sono state ripristinat
 $string['fetch_success_message'] = 'Dati Zoom importati con successo!';
 $string['fetch_error_message'] = 'Errore durante l\'importazione';
 $string['fetch_network_error'] = 'Errore di rete';
+
+
+$string['users_found_in_session'] = 'Utenti Zoom trovati nel periodo del registro';
+$string['zoom_records_unassigned'] = 'Record Zoom non assegnati ad utenti del corso';

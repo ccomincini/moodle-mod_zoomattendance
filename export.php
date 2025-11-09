@@ -23,7 +23,42 @@ try {
 
     global $DB;
     $session = $DB->get_record('zoomattendance', ['id' => $cm->instance], '*', MUST_EXIST);
-    $records = $DB->get_records('zoomattendance_data', ['sessionid' => $session->id]);
+    
+    // CARICA SOLO UTENTI IDENTIFICATI NEL RANGE (come in view.php)
+    $sql = "SELECT 
+                userid,
+                MIN(id) as id,
+                GROUP_CONCAT(DISTINCT name ORDER BY name SEPARATOR ' | ') as name,
+                SUM(attendance_duration) as attendance_duration,
+                MIN(join_time) as join_time,
+                MAX(leave_time) as leave_time,
+                MAX(manually_assigned) as manually_assigned
+            FROM {zoomattendance_data}
+            WHERE sessionid = ? AND userid > 0 AND attendance_duration > 0
+            GROUP BY userid";
+    
+    $records = $DB->get_records_sql($sql, [$session->id]);
+    
+    // APPLICA DEDUPLICA MULTI-DEVICE (come in view.php)
+    $merger = new \mod_zoomattendance\interval_merger();
+    
+    foreach ($records as $key => $record) {
+        $all_intervals = $DB->get_records('zoomattendance_data', 
+            ['sessionid' => $session->id, 'userid' => $record->userid], 
+            'join_time ASC');
+        
+        $intervals = [];
+        foreach ($all_intervals as $interval) {
+            if ($interval->join_time > 0 && $interval->leave_time > 0) {
+                $intervals[] = ['join_time' => $interval->join_time, 'leave_time' => $interval->leave_time];
+            }
+        }
+        
+        if (!empty($intervals)) {
+            $merged_duration = $merger->total_for_range($intervals, $session->start_datetime, $session->end_datetime);
+            $record->attendance_duration = $merged_duration;
+        }
+    }
 
     function format_duration($seconds) {
         $hours = floor($seconds / 3600);
@@ -40,7 +75,7 @@ try {
     
     $data = [];
     foreach ($records as $record) {
-        $user = $record->userid ? $DB->get_record('user', ['id' => $record->userid]) : false;
+        $user = $DB->get_record('user', ['id' => $record->userid]);
         $percentage = $expected_duration > 0 ? round(($record->attendance_duration / $expected_duration) * 100) : 0;
         $is_sufficient = $percentage >= $threshold;
         
@@ -49,7 +84,7 @@ try {
             'Nome' => $user ? $user->firstname : '',
             'ID Number' => $user ? $user->idnumber : '',
             'Utente Zoom' => $record->name,
-            'Tipo' => $record->manually_assigned ? 'Manuale' : ($record->userid ? 'Automatico' : 'Non assegnato'),
+            'Tipo' => $record->manually_assigned ? 'Manuale' : 'Automatico',
             'Durata' => format_duration($record->attendance_duration),
             'Percentuale' => $percentage . '%',
             'Sufficiente' => $is_sufficient ? 'Sì' : 'No'
@@ -73,7 +108,6 @@ try {
         fclose($output);
     } 
     elseif ($format === 'xlsx') {
-        // Percorso CORRETTO al PHPOffice dentro il plugin
         $autoload_path = __DIR__ . '/phpoffice/autoload.php';
         
         if (!file_exists($autoload_path)) {
